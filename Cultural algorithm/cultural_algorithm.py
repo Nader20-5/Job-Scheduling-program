@@ -1,5 +1,6 @@
 import schedule
 import copy
+import operators
 
 FINAL_POPULATION = 50
 FINAL_GENERATIONS = 100
@@ -24,7 +25,7 @@ def solve_with_ca(jobs_input, num_machines):
     }
     
     #making 50 random schedules[Gen 0]
-    population = [schedule.create_random_schedule(jobs_input , num_machines) for _ in range(FINAL_POPULATION)] 
+    population = [schedule.create_random_schedule(jobs_input) for _ in range(FINAL_POPULATION)] 
 
     #getting fitness score for each schedule
     fitness_scores = [schedule.calculate_fitness(s , jobs_input , num_machines) for s in population] 
@@ -41,7 +42,7 @@ def solve_with_ca(jobs_input, num_machines):
             parent1 = operators.selection(population, fitness_scores)
             parent2 = operators.selection(population, fitness_scores)
             child = operators.crossover(parent1, parent2)
-            child = operators.mutation(child, belief_space)
+            child = operators.mutation(child, belief_space , mutation_rate=0.1)
 
             new_population.append(child)
 
