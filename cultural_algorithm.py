@@ -1,4 +1,5 @@
 import schedule
+import copy
 
 FINAL_POPULATION = 50
 FINAL_GENERATIONS = 100
