@@ -8,33 +8,56 @@ import numpy as np
 
 @dataclass
 class Op:
-    id: int; dur: int; mach: int
-    def _repr_(self): return f"Op{self.id}(d={self.dur},M{self.mach})"
+    id: int
+    dur: int
+    mach: int
+    def __repr__(self):
+        return f"Op{self.id}(d={self.dur},M{self.mach})"
 
 @dataclass
 class Job:
-    id: int; ops: List[Op]; deps: List[int]; pri: int = 0
-    def _repr_(self): return f"Job{self.id}(ops={len(self.ops)},deps={self.deps})"
-    def next_op(self, prog): return self.ops[prog] if prog < len(self.ops) else None
-    def complete(self, prog): return prog >= len(self.ops)
+    id: int
+    ops: List[Op]
+    deps: List[int]
+    pri: int = 0
+    def __repr__(self):
+        return f"Job{self.id}(ops={len(self.ops)},deps={self.deps})"
+    def next_op(self, prog):
+        return self.ops[prog] if prog < len(self.ops) else None
+    def complete(self, prog):
+        return prog >= len(self.ops)
 
 @dataclass
 class Assign:
-    j:int; o:int; m:int; s:int; e:int
-    def _repr_(self): return f"J{self.j}O{self.o}->M{self.m}[{self.s}-{self.e}]"
+    j:int
+    o:int
+    m:int
+    s:int
+    e:int
+    def __repr__(self):
+        return f"J{self.j}O{self.o}->M{self.m}[{self.s}-{self.e}]"
 
 class Tracker:
-    def _init_(self): self.nodes=0; self.pruned=0; self.sol=0; self.start=0; self.end=0
+    def __init__(self):
+        self.nodes=0
+        self.pruned=0
+        self.sol=0
+        self.start=0
+        self.end=0
     def start_t(self): self.start=time.time()
     def end_t(self): self.end=time.time()
     def elapsed(self): return max(0.0, self.end-self.start)
 
 class Scheduler:
-    def _init_(self, machines:int, jobs:List[Job]):
-        self.machines=machines; self.jobs=jobs
-        self.best:Optional[List[Assign]] = None; self.best_ms = 10**9
-        self.tracker=Tracker(); self.all_sols=[]
-        for j in self.jobs: j.pri = -len(j.deps)
+    def __init__(self, machines:int, jobs:List[Job]):
+        self.machines=machines
+        self.jobs=jobs
+        self.best:Optional[List[Assign]] = None
+        self.best_ms = 10**9
+        self.tracker=Tracker()
+        self.all_sols=[]
+        for j in self.jobs:
+            j.pri = -len(j.deps)
 
     def avail_ops(self, prog:Dict[int,int]) -> List[Tuple[Job,Op]]:
         res=[]
@@ -42,8 +65,11 @@ class Scheduler:
             if j.complete(prog[j.id]): continue
             ok=True
             for d in j.deps:
-                if not next(filter(lambda x: x.id==d,self.jobs)).complete(prog[d]):
-                    ok=False; self.tracker.pruned+=1; break
+                dep_job = next(filter(lambda x: x.id==d, self.jobs))
+                if not dep_job.complete(prog[d]):
+                    ok=False
+                    self.tracker.pruned+=1
+                    break
             if ok:
                 op=j.next_op(prog[j.id])
                 if op: res.append((j,op))
@@ -56,32 +82,43 @@ class Scheduler:
             self.tracker.sol += 1
             self.all_sols.append((copy.deepcopy(sched), ms))
             if ms < self.best_ms:
-                self.best_ms = ms; self.best = copy.deepcopy(sched)
+                self.best_ms = ms
+                self.best = copy.deepcopy(sched)
             return
         ops = self.avail_ops(prog)
         if not ops:
-            self.tracker.pruned += 1; return
+            self.tracker.pruned += 1
+            return
         ops.sort(key=lambda x: x[0].pri, reverse=True)
-        for job,op in ops:
+        for job, op in ops:
             m = op.mach
-            if m<1 or m>self.machines: self.tracker.pruned += 1; continue
-            i=m-1; s=timeline[i]; e=s+op.dur
-            a=Assign(job.id,op.id,m,s,e)
-            sched.append(a); old=timeline[i]; timeline[i]=e; prog[job.id]+=1
+            if m<1 or m>self.machines:
+                self.tracker.pruned += 1
+                continue
+            i = m-1
+            s = timeline[i]
+            e = s + op.dur
+            a = Assign(job.id, op.id, m, s, e)
+            sched.append(a)
+            old = timeline[i]
+            timeline[i] = e
+            prog[job.id] += 1
             # simple pruning: partial makespan >= best
             if max(timeline) < self.best_ms:
                 self.backtrack(sched, prog, timeline)
             else:
                 self.tracker.pruned += 1
             # undo
-            sched.pop(); timeline[i]=old; prog[job.id]-=1
+            sched.pop()
+            timeline[i] = old
+            prog[job.id] -= 1
 
     def solve(self):
-        total_ops=sum(len(j.ops) for j in self.jobs)
+        total_ops = sum(len(j.ops) for j in self.jobs)
         print(f"\nJobs: {len(self.jobs)}, Machines: {self.machines}, Total ops: {total_ops}")
         self.tracker.start_t()
-        prog={j.id:0 for j in self.jobs}
-        timeline=[0]*self.machines
+        prog = {j.id:0 for j in self.jobs}
+        timeline = [0]*self.machines
         self.backtrack([], prog, timeline)
         self.tracker.end_t()
         return self.best, self.best_ms
@@ -90,11 +127,11 @@ class Scheduler:
 def get_input():
     print("\nCompact Job Shop Input")
     while True:
-        try: M=int(input("Machines (2-10): ")); 
+        try: M=int(input("Machines (2-10): "));
         except: continue
         if 2<=M<=10: break
     while True:
-        try: J=int(input("Jobs (1-10): ")); 
+        try: J=int(input("Jobs (1-10): "));
         except: continue
         if 1<=J<=10: break
     jobs=[]
@@ -128,7 +165,8 @@ def jobs_df(sol:List[Assign], jobs:List[Job]):
     for job in jobs:
         asg=[a for a in sol if a.j==job.id]
         if not asg: continue
-        s=min(a.s for a in asg); e=max(a.e for a in asg)
+        s=min(a.s for a in asg)
+        e=max(a.e for a in asg)
         rows.append({'Job ID':job.id,'Num Operations':len(asg),'Start Time':s,'End Time':e,'Total Duration':sum(a.e-a.s for a in asg),'Makespan':e-s})
     return pd.DataFrame(rows).sort_values('Job ID')
 
@@ -142,7 +180,7 @@ def print_gantt(sol:List[Assign], M:int, ms:int):
         cur=0
         for a in bym[m]:
             idle=a.s-cur
-            if idle>0: line+= "."*(idle)
+            if idle>0: line+= "."*idle
             label=f"[J{a.j}O{a.o}]"
             line+=label*(max(1,a.e-a.s))
             cur=a.e
@@ -157,13 +195,17 @@ def main():
     best,ms=sched.solve()
     if best:
         print("\nOPERATIONS SCHEDULE (best):")
-        df=ops_df(best); print(df.to_string(index=False))
-        jf=jobs_df(best,jobs); print("\nJOBS SUMMARY:"); print(jf.to_string(index=False))
+        df=ops_df(best)
+        print(df.to_string(index=False))
+        jf=jobs_df(best,jobs)
+        print("\nJOBS SUMMARY:")
+        print(jf.to_string(index=False))
         print(f"\nBest makespan: {ms}")
         print_gantt(best,M,ms)
         # save csv
         ts=datetime.now().strftime("%Y%m%d_%H%M%S")
-        df.to_csv(f"ops_{ts}.csv",index=False); jf.to_csv(f"jobs_{ts}.csv",index=False)
+        df.to_csv(f"ops_{ts}.csv",index=False)
+        jf.to_csv(f"jobs_{ts}.csv",index=False)
         print(f"\nSaved CSV: ops_{ts}.csv , jobs_{ts}.csv")
     else:
         print("No solution found.")
@@ -171,5 +213,5 @@ def main():
     t=sched.tracker
     print(f"\nNodes explored: {t.nodes}, pruned: {t.pruned}, solutions: {t.sol}, time: {t.elapsed():.4f}s")
 
-if _name=="main_":
+if __name__=="__main__":
     main()
