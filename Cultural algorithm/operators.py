@@ -107,7 +107,7 @@ def influence_evolution(self, schedule, belief_space, mutation_rate=0.1, influen
     return influenced_schedule
     """
 
-from collections import Counter
+"""from collections import Counter
 import random
 import copy
 
@@ -179,4 +179,144 @@ def mutation(chromosome, belief_space, mutation_rate=0.1):
         idx1, idx2 = random.sample(range(len(new_chromosome)), 2)
         new_chromosome[idx1], new_chromosome[idx2] = new_chromosome[idx2], new_chromosome[idx1]
 
+    return new_chromosome"""
+from collections import Counter
+import random
+import copy
+
+
+def selection(population, fitness_scores):
+    idx1 = random.randint(0, len(population) - 1)
+    idx2 = random.randint(0, len(population) - 1)
+
+    if fitness_scores[idx1] < fitness_scores[idx2]:
+        return population[idx1]
+    else:
+        return population[idx2]
+
+
+def crossover(parent1_chromosome, parent2_chromosome):
+    p1 = copy.deepcopy(parent1_chromosome)
+    p2 = copy.deepcopy(parent2_chromosome)
+    size = len(p1)
+
+    # Pick two random cut-off points
+    start, end = sorted(random.sample(range(size), 2))
+    child = [None] * size
+
+    # 3. Copy the "chunk" from parent 1 directly to the child
+    chunk = p1[start:end]
+    child[start:end] = chunk
+
+    # 4. Count the items in the chunk
+    chunk_item_counts = Counter(chunk)
+
+    # 5. Get the list of items to add from Parent 2
+    p2_items_to_add = []
+    for item in p2:
+        # Check if this item is "available" in the chunk
+        if item in chunk_item_counts and chunk_item_counts[item] > 0:
+            chunk_item_counts[item] -= 1
+        else:
+            p2_items_to_add.append(item)
+
+    # 6. Fill in the 'None' gaps in the child, using the items from parent 2
+    child_pointer = 0
+    p2_pointer = 0
+
+    while p2_pointer < len(p2_items_to_add):
+        if child_pointer == start:
+            # We've reached the middle chunk, jump to the end
+            child_pointer = end
+
+        # If this slot is empty, fill it
+        if child[child_pointer] is None:
+            child[child_pointer] = p2_items_to_add[p2_pointer]
+            p2_pointer += 1
+
+        child_pointer += 1
+
+    return child
+
+
+def mutation(chromosome, belief_space, mutation_rate=0.1):
+    new_chromosome = copy.deepcopy(chromosome)
+
+    if random.random() < mutation_rate:
+        idx1, idx2 = random.sample(range(len(new_chromosome)), 2)
+        new_chromosome[idx1], new_chromosome[idx2] = new_chromosome[idx2], new_chromosome[idx1]
+
     return new_chromosome
+
+
+def influence_evolution(chromosome, belief_space, influence_strength=0.5):
+    influenced_chromosome = copy.deepcopy(chromosome)
+
+    if not hasattr(belief_space, 'normative') or not belief_space.normative:
+        return influenced_chromosome
+
+    if isinstance(influenced_chromosome[0], (int, float)):
+        for position in range(len(influenced_chromosome)):
+            if random.random() < influence_strength:
+
+                job_id = influenced_chromosome[position]
+
+                if position in belief_space.normative:
+                    norm = belief_space.normative[position]
+
+                    if 'lower_bound' in norm and 'upper_bound' in norm:
+                        L_j = norm['lower_bound']
+                        U_j = norm['upper_bound']
+
+                        r = random.uniform(0, 1)
+
+                        new_job_id = L_j + r * (U_j - L_j)
+                        new_job_id = int(round(new_job_id))
+
+                        if new_job_id in influenced_chromosome:
+                            current_pos = position
+                            new_pos = influenced_chromosome.index(new_job_id)
+
+                            influenced_chromosome[current_pos], influenced_chromosome[new_pos] = \
+                                influenced_chromosome[new_pos], influenced_chromosome[current_pos]
+
+
+
+    elif isinstance(influenced_chromosome[0], list) and len(influenced_chromosome[0]) == 2:
+
+        for job_id in range(len(influenced_chromosome)):
+
+            if random.random() < influence_strength:
+
+                if job_id in belief_space.normative:
+                    norm = belief_space.normative[job_id]
+
+                    current_resource, current_time = influenced_chromosome[job_id]
+
+                    if 'resource_lower' in norm and 'resource_upper' in norm:
+                        L_resource = norm['resource_lower']
+                        U_resource = norm['resource_upper']
+
+                        #  x_ij = L_j(t) + r * (U_j(t) - L_j(t))
+                        r = random.uniform(0, 1)
+                        new_resource = L_resource + r * (U_resource - L_resource)
+                        new_resource = int(round(new_resource))
+
+                        if hasattr(belief_space, 'num_resources'):
+                            new_resource = max(1, min(new_resource, belief_space.num_resources))
+
+                        influenced_chromosome[job_id][0] = new_resource
+
+                    if 'time_lower' in norm and 'time_upper' in norm:
+                        L_time = norm['time_lower']
+                        U_time = norm['time_upper']
+
+                        r = random.uniform(0, 1)
+                        new_time = L_time + r * (U_time - L_time)
+                        new_time = int(round(new_time))
+
+                        new_time = max(0, new_time)
+
+                        influenced_chromosome[job_id][1] = new_time
+
+    return influenced_chromosome
