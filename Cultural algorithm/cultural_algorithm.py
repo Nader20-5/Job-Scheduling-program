@@ -18,10 +18,23 @@ def update_belief_space(belief_space, population, fitness_scores):
 
 
 def solve_with_ca(jobs_input, num_machines):
+    
+    job_durations = []
+    for job_id, operations in enumerate(jobs_input):
+        total_time = sum(op[1] for op in operations) # Sum durations of all ops
+        job_durations.append( (job_id, total_time) )
+    
+    # Sort by duration (highest first)
+    job_durations.sort(key=lambda x: x[1], reverse=True)
+    
+    # Let's say the top 20% of jobs are "Critical"
+    num_critical = max(1, int(len(jobs_input) * 0.2)) 
+    critical_jobs_list = [item[0] for item in job_durations[:num_critical]]
 
     belief_space = {
         'best_fitness_so_far': float('inf'),
-        'best_schedule_so_far': []
+        'best_schedule_so_far': [],
+        'critical_jobs': critical_jobs_list
     }
     
     #making 50 random schedules[Gen 0]

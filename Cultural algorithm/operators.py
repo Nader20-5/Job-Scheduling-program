@@ -1,32 +1,4 @@
-"""import random
-import copy
-    
-def selection(self, fitnesses):
-    selected_parents = []
-    for _ in range(self.pop_size):
-        # select a random solution
-        idx1 = random.randint(0, len(self.population) - 1)
-        idx2 = random.randint(0, len(self.population) - 1)
-            
-        # select the best 
-        if fitnesses[idx1] > fitnesses[idx2]:
-            winner = copy.deepcopy(self.population[idx1])
-        else:
-            winner = copy.deepcopy(self.population[idx2])
-            
-        selected_parents.append(winner)
-        return selected_parents
-    
-
-def crossover(self, parent1, parent2):
-        
-    # cut mn makan random
-    crossover_point = random.randint(1, self.num_jobs - 1)
-    child = parent1[:crossover_point] + parent2[crossover_point:]
-        
-    return child
-    
-    
+"""   
 def mutation(self, schedule, mutation_rate=0.1):
     
     mutated_schedule = copy.deepcopy(schedule)
@@ -175,11 +147,65 @@ def mutation(chromosome, belief_space, mutation_rate=0.1):
     
     new_chromosome = copy.deepcopy(chromosome)
     
-    if random.random() < mutation_rate:
-        idx1, idx2 = random.sample(range(len(new_chromosome)), 2)
-        new_chromosome[idx1], new_chromosome[idx2] = new_chromosome[idx2], new_chromosome[idx1]
+    # --- 1. CULTURAL INFLUENCE (30% Chance) ---
+    # This replaces your friend's 'influence_evolution' function.
+    if random.random() < 0.3: 
+        
+        # A. SITUATIONAL KNOWLEDGE (Copying the Leader)
+        # Logic: "If Job A is before Job B in the Best Schedule, I should do that too."
+        best_ever = belief_space['best_schedule_so_far']
+        
+        if best_ever: # Only if we have a history
+            # Pick two random spots in our child
+            idx1, idx2 = sorted(random.sample(range(len(new_chromosome)), 2))
+            job_a = new_chromosome[idx1]
+            job_b = new_chromosome[idx2]
+            
+            # Check: Where are they in the Best Schedule?
+            try:
+                pos_a_in_best = best_ever.index(job_a)
+                pos_b_in_best = best_ever.index(job_b)
+                
+                # If the Best Schedule has B before A...
+                if pos_b_in_best < pos_a_in_best:
+                    # ...but WE have A before B (since idx1 < idx2)...
+                    # SWAP THEM to match the leader!
+                    new_chromosome[idx1], new_chromosome[idx2] = job_b, job_a
+                    return new_chromosome 
+            except ValueError:
+                pass 
+
+        # B. DOMAIN KNOWLEDGE (Critical Jobs)
+        # Logic: "Long/Critical jobs should be done FIRST."
+        # (We assume even-numbered jobs are 'critical' for this example)
+        idx = random.randint(1, len(new_chromosome) - 1)
+        job_id = new_chromosome[idx]
+        
+        # Your friend's check: "if job_id in belief_space...critical_jobs"
+        # For now, let's pretend Job 0 is always critical:
+        is_critical = (job_id == 0) 
+        
+        if is_critical:
+            # It's critical! Move it earlier in the priority list (swap left)
+            # This translates "Don't put on busy machine" to "Schedule it earlier"
+            new_chromosome[idx], new_chromosome[idx-1] = new_chromosome[idx-1], new_chromosome[idx]
+            return new_chromosome
+
+
+    # --- 2. STANDARD MUTATION (10% Chance) ---
+    # If we didn't use culture, we check for a normal random mutation.
+    elif random.random() < mutation_rate:
+        if len(new_chromosome) >= 2:
+            idx1, idx2 = random.sample(range(len(new_chromosome)), 2)
+            # Simple random swap
+            new_chromosome[idx1], new_chromosome[idx2] = new_chromosome[idx2], new_chromosome[idx1]
 
     return new_chromosome"""
+
+
+
+
+
 from collections import Counter
 import random
 import copy
@@ -238,8 +264,77 @@ def crossover(parent1_chromosome, parent2_chromosome):
 
     return child
 
-
 def mutation(chromosome, belief_space, mutation_rate=0.1):
+    
+    new_chromosome = copy.deepcopy(chromosome)
+    
+    # --- 1. CULTURAL INFLUENCE (30% Chance) ---
+    # This replaces your friend's 'influence_evolution' function.
+    if random.random() < 0.3: 
+        
+        # A. SITUATIONAL KNOWLEDGE (Copying the Leader)
+        # Logic: "If Job A is before Job B in the Best Schedule, I should do that too."
+        best_ever = belief_space['best_schedule_so_far']
+        
+        if best_ever: # Only if we have a history
+            # Pick two random spots in our child
+            idx1, idx2 = sorted(random.sample(range(len(new_chromosome)), 2))
+            job_a = new_chromosome[idx1]
+            job_b = new_chromosome[idx2]
+            
+            # Check: Where are they in the Best Schedule?
+            try:
+                pos_a_in_best = best_ever.index(job_a)
+                pos_b_in_best = best_ever.index(job_b)
+                
+                # If the Best Schedule has B before A...
+                if pos_b_in_best < pos_a_in_best:
+                    # ...but WE have A before B (since idx1 < idx2)...
+                    # SWAP THEM to match the leader!
+                    new_chromosome[idx1], new_chromosome[idx2] = job_b, job_a
+                    return new_chromosome 
+            except ValueError:
+                pass 
+
+        # B. DOMAIN KNOWLEDGE (Critical Jobs)
+        # Logic: "Long/Critical jobs should be done FIRST."
+        # (We assume even-numbered jobs are 'critical' for this example)
+        idx = random.randint(1, len(new_chromosome) - 1)
+        job_id = new_chromosome[idx]
+        
+        # CHECK THE BELIEF SPACE!
+        # (This is the real influence)
+        is_critical = (job_id in belief_space['critical_jobs'])
+        
+        if is_critical:
+            # It IS a big job! Move it earlier.
+            new_chromosome[idx], new_chromosome[idx-1] = new_chromosome[idx-1], new_chromosome[idx]
+            return new_chromosome
+
+
+    # --- 2. STANDARD MUTATION (10% Chance) ---
+    # If we didn't use culture, we check for a normal random mutation.
+    elif random.random() < mutation_rate:
+        if len(new_chromosome) >= 2:
+            idx1, idx2 = random.sample(range(len(new_chromosome)), 2)
+            # Simple random swap
+            new_chromosome[idx1], new_chromosome[idx2] = new_chromosome[idx2], new_chromosome[idx1]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''def mutation(chromosome, belief_space, mutation_rate=0.1):
     new_chromosome = copy.deepcopy(chromosome)
 
     if random.random() < mutation_rate:
@@ -319,4 +414,4 @@ def influence_evolution(chromosome, belief_space, influence_strength=0.5):
 
                         influenced_chromosome[job_id][1] = new_time
 
-    return influenced_chromosome
+    return influenced_chromosome'''
