@@ -27,7 +27,7 @@ def solve_with_ca(jobs_input, num_machines):
     # Sort by duration (highest first)
     job_durations.sort(key=lambda x: x[1], reverse=True)
     
-    # Let's say the top 20% of jobs are "Critical"
+    #top 20% of jobs are "Critical"
     num_critical = max(1, int(len(jobs_input) * 0.2)) 
     critical_jobs_list = [item[0] for item in job_durations[:num_critical]]
 
@@ -46,10 +46,15 @@ def solve_with_ca(jobs_input, num_machines):
     for gen in range(FINAL_GENERATIONS):
 
         update_belief_space(belief_space, population, fitness_scores)
-        new_population = []
+
+        pop_with_scores = list(zip(population, fitness_scores))
+        pop_with_scores.sort(key=lambda x: x[1])
+        num_of_old = int(FINAL_POPULATION * 0.2)
+        new_population = [x[0] for x in pop_with_scores[:num_of_old]]
+        remaining_slots = FINAL_POPULATION - num_of_old
 
         #making new Generation
-        for _ in range(FINAL_POPULATION):
+        for _ in range(remaining_slots):
 
             #select 2 parents make a crossover and small mutation and put it in new population
             parent1 = operators.selection(population, fitness_scores)
@@ -61,5 +66,10 @@ def solve_with_ca(jobs_input, num_machines):
 
         population = new_population
         fitness_scores = [schedule.calculate_fitness(s, jobs_input, num_machines) for s in population]
-
+        if (gen + 1) % 10 == 0:
+            print(f"Generation {gen + 1}/{FINAL_GENERATIONS}: Best Fitness = {belief_space['best_fitness_so_far']}")
+            
+    print("--- Evolution Finished ---")
+    print(f"Final Best Fitness (Makespan): {belief_space['best_fitness_so_far']}")
+    print(f"Final Best Schedule (Priority): {belief_space['best_schedule_so_far']}")
     return belief_space['best_schedule_so_far'], belief_space['best_fitness_so_far']
