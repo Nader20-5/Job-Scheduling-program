@@ -1,6 +1,6 @@
-import schedule
+from . import schedule
 import copy
-import operators
+from . import operators
 
 FINAL_POPULATION = 50
 FINAL_GENERATIONS = 100
@@ -72,4 +72,7 @@ def solve_with_ca(jobs_input, num_machines):
     print("--- Evolution Finished ---")
     print(f"Final Best Fitness (Makespan): {belief_space['best_fitness_so_far']}")
     print(f"Final Best Schedule (Priority): {belief_space['best_schedule_so_far']}")
-    return belief_space['best_schedule_so_far'], belief_space['best_fitness_so_far']
+    
+    avg_fitness = sum(fitness_scores) / len(fitness_scores)
+    
+    return belief_space['best_schedule_so_far'], belief_space['best_fitness_so_far'], avg_fitness

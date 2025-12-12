@@ -23,7 +23,7 @@ class Assign:
     j:int; o:int; m:int; s:int; e:int
 
 class Tracker:
-    def __init__(self): self.nodes=0; self.pruned=0; self.sol=0; self.start=0; self.end=0
+    def __init__(self): self.nodes=0; self.pruned=0; self.sol=0; self.start=0; self.end=0; self.max_depth=0
     def start_t(self): self.start=time.time()
     def end_t(self): self.end=time.time()
     def elapsed(self): return self.end-self.start
@@ -48,8 +48,9 @@ class Scheduler:
         candidates.sort(key=lambda x: (x[2], x[0].id), reverse=True)
         return [(j,op) for j,op,_ in candidates]
 
-    def backtrack(self, sched, prog, timeline, job_last_end):
+    def backtrack(self, sched, prog, timeline, job_last_end, depth=0):
         self.tracker.nodes += 1
+        self.tracker.max_depth = max(self.tracker.max_depth, depth)
 
         if all(j.complete(prog[j.id]) for j in self.jobs):
             ms = max(timeline)
@@ -79,7 +80,7 @@ class Scheduler:
             prog[job.id] += 1
 
             if max(timeline) < self.best_ms:
-                self.backtrack(sched, prog, timeline, job_last_end)
+                self.backtrack(sched, prog, timeline, job_last_end, depth + 1)
             else:
                 self.tracker.pruned += 1
 
